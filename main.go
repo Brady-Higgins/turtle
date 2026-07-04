@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/Brady-Higgins/turtle/cmd"
 	"github.com/Brady-Higgins/turtle/internal/docker"
@@ -27,6 +28,13 @@ func main() {
 		id, err = d.BuildContainer(imgName, ctx)
 		d.StartContainer(id, ctx)
 	}
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	time.Sleep(time.Second * 10)
+	err = d.StopContainer(id, ctx)
 	if err != nil {
 		fmt.Println(err)
 		return
