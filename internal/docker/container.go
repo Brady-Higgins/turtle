@@ -20,9 +20,20 @@ func New() (*dockerClient, error) {
 	return c, err
 }
 
+// GetContainerID : return container ID if a container running the image already exists, else empty string
+func (d *dockerClient) GetContainerID(imageName string, ctx context.Context) string {
+	containers, _ := d.Cli.ContainerList(ctx, client.ContainerListOptions{All: true})
+	for _, c := range containers.Items {
+		if imageName == c.Image {
+			return c.ID
+		}
+	}
+	return ""
+}
+
 // StartContainer : build a docker image provided an image name
 // imageName : image-name:tag
-func (d *dockerClient) StartContainer(imageName string, ctx context.Context) error {
+func (d *dockerClient) BuildContainer(imageName string, ctx context.Context) (string, error) {
 	containerPort, _ := network.ParsePort("80/tcp")
 	localAdd := netip.MustParseAddr("0.0.0.0")
 	localPortBindings := []network.PortBinding{
@@ -41,7 +52,15 @@ func (d *dockerClient) StartContainer(imageName string, ctx context.Context) err
 			},
 		},
 	})
-	_, err = d.Cli.ContainerStart(ctx, resp.ID, client.ContainerStartOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	return resp.ID, nil
+}
+
+func (d *dockerClient) StartContainer(containerID string, ctx context.Context) error {
+	_, err := d.Cli.ContainerStart(ctx, containerID, client.ContainerStartOptions{})
 	if err != nil {
 		return err
 	}

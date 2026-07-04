@@ -17,7 +17,16 @@ func main() {
 		return
 	}
 	ctx := context.Background()
-	err = d.StartContainer("example-site:latest", ctx)
+	imgName := "example-site"
+	//err = d.StartContainer("example-site:latest", ctx)
+	id := d.GetContainerID(imgName, ctx)
+	// container already exists for image
+	if id != "" {
+		err = d.StartContainer(id, ctx)
+	} else { // need to build container first
+		id, err = d.BuildContainer(imgName, ctx)
+		d.StartContainer(id, ctx)
+	}
 	if err != nil {
 		fmt.Println(err)
 		return
