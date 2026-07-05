@@ -13,6 +13,7 @@ type dockerClient struct {
 	Cli *client.Client
 }
 
+// New : Creates a new docker client
 func New() (*dockerClient, error) {
 	cli, err := client.New(client.FromEnv)
 	c := &dockerClient{Cli: cli}
@@ -58,6 +59,7 @@ func (d *dockerClient) BuildContainer(imageName string, ctx context.Context) (st
 	return resp.ID, nil
 }
 
+// StartContainer : Starts container given container ID
 func (d *dockerClient) StartContainer(containerID string, ctx context.Context) error {
 	_, err := d.Cli.ContainerStart(ctx, containerID, client.ContainerStartOptions{})
 	if err != nil {
@@ -66,6 +68,7 @@ func (d *dockerClient) StartContainer(containerID string, ctx context.Context) e
 	return err
 }
 
+// StopContainer : stops container given container ID
 func (d *dockerClient) StopContainer(containerID string, ctx context.Context) error {
 	_, err := d.Cli.ContainerStop(ctx, containerID, client.ContainerStopOptions{})
 	if err != nil {
