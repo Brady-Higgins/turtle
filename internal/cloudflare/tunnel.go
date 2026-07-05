@@ -11,3 +11,7 @@ func RunCloudflared(tunnelName string) error {
 	}
 	return nil
 }
+
+func isCloudflaredUp() bool {
+	return false
+}
