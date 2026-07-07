@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Brady-Higgins/turtle/internal/cloudflare"
+	"github.com/Brady-Higgins/turtle/internal/cloudflare_client"
 	"github.com/Brady-Higgins/turtle/internal/docker"
 	"github.com/spf13/cobra"
 )
@@ -29,7 +29,7 @@ func activateSelfHosting(imgName string, ctx context.Context) {
 		fmt.Println(err)
 		return
 	}
-	go cloudflare.RunCloudflared("example")
+	go cloudflare_client.RunCloudflared("example")
 }
 
 func checkSelfHosting() bool {
