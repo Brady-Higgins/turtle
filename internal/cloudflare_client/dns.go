@@ -79,3 +79,21 @@ func (c *cloudflareClient) DeleteDNSRecord(d *DnsRecord, ctx context.Context) er
 	})
 	return err
 }
+
+//func (c *cloudflareClient) GetTunnelID(ctx context.Context) (string, error) {
+//	resp, err := c.Cli.ZeroTrust.Tunnels.List(ctx, zero_trust.TunnelListParams{
+//		AccountID: cloudflare.F(os.Getenv("CLOUDFLARE_ACCOUNT_ID")),
+//		Name:      cloudflare.F(""),
+//	})
+//	c.Cli.NetworkInterconnects.Interconnects.
+//		fmt.Println(resp)
+//	if err != nil {
+//		return "", err
+//	}
+//	// No tunnels
+//	if len(resp.Result) == 0 {
+//		fmt.Println("nogthing")
+//		return "", nil
+//	}
+//	return resp.Result[0].ID, err
+//}
