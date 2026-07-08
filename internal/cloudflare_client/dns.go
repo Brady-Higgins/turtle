@@ -37,8 +37,8 @@ func (c *cloudflareClient) NewDNSRecord(ctx context.Context) error {
 			TTL:     cloudflare.F(dns.TTL1), // automatic
 			Type:    cloudflare.F(dns.ARecordTypeA),
 			Content: cloudflare.F(os.Getenv("CLOUD_IP")),
-			Proxied: cloudflare.F(true), // proxy it
-			Comment: cloudflare.F("Turtle CLI"),
+			Proxied: cloudflare.F(true),         // proxy it
+			Comment: cloudflare.F("Turtle CLI"), // Use comment to identify records created by turtle cli
 		},
 	})
 	if err != nil {
@@ -48,10 +48,12 @@ func (c *cloudflareClient) NewDNSRecord(ctx context.Context) error {
 	return nil
 }
 
+// GetDNSRecord : returns a DNSRecord struct if a turtle created record exists else nil
 func (c *cloudflareClient) GetDNSRecord(ctx context.Context) (*DnsRecord, error) {
 	//_, err := c.Cli.DNS.Records.Get(ctx)
 	resp, err := c.Cli.DNS.Records.List(ctx, dns.RecordListParams{
 		ZoneID: cloudflare.F(os.Getenv("CLOUDFLARE_ZONE_ID")),
+		// Use comment to identify records created by turtle cli
 		Comment: cloudflare.F(dns.RecordListParamsComment{
 			Contains: cloudflare.F("Turtle CLI"),
 		}),
@@ -59,8 +61,9 @@ func (c *cloudflareClient) GetDNSRecord(ctx context.Context) (*DnsRecord, error)
 	if err != nil {
 		return nil, err
 	}
-	if resp == nil {
-		return nil, fmt.Errorf("No current Turtle CLI created DNS Records.")
+	// No DNS records exist that were created by turtle
+	if len(resp.Result) == 0 {
+		return nil, nil
 	}
 	d := DnsRecord{}
 	err = json.Unmarshal([]byte(resp.Result[0].JSON.RawJSON()), &d)
@@ -70,6 +73,9 @@ func (c *cloudflareClient) GetDNSRecord(ctx context.Context) (*DnsRecord, error)
 	return &d, nil
 }
 
-//func (c *cloudflareClient) deleteDNSRecord(recordName string, recordType string, ctx context.Context) error {
-//	_, err := c.Cli.DNS.Records.Delete(ctx,)
-//}
+func (c *cloudflareClient) DeleteDNSRecord(d *DnsRecord, ctx context.Context) error {
+	_, err := c.Cli.DNS.Records.Delete(ctx, d.Id, dns.RecordDeleteParams{
+		ZoneID: cloudflare.F(os.Getenv("CLOUDFLARE_ZONE_ID")),
+	})
+	return err
+}
