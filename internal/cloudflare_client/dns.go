@@ -16,6 +16,8 @@ type DnsRecord struct {
 	RecordType string `json:"type"`
 }
 
+const dnsRecordComment string = "Turtle CLI"
+
 type cloudflareClient struct {
 	Cli *cloudflare.Client
 }
@@ -37,8 +39,8 @@ func (c *cloudflareClient) NewDNSRecord(ctx context.Context) error {
 			TTL:     cloudflare.F(dns.TTL1), // automatic
 			Type:    cloudflare.F(dns.ARecordTypeA),
 			Content: cloudflare.F(os.Getenv("CLOUD_IP")),
-			Proxied: cloudflare.F(true),         // proxy it
-			Comment: cloudflare.F("Turtle CLI"), // Use comment to identify records created by turtle cli
+			Proxied: cloudflare.F(true),             // proxy it
+			Comment: cloudflare.F(dnsRecordComment), // Use comment to identify records created by turtle cli
 		},
 	})
 	if err != nil {
@@ -49,15 +51,24 @@ func (c *cloudflareClient) NewDNSRecord(ctx context.Context) error {
 }
 
 // GetDNSRecord : returns a DNSRecord struct if a turtle created record exists else nil
-func (c *cloudflareClient) GetDNSRecord(ctx context.Context) (*DnsRecord, error) {
-	//_, err := c.Cli.DNS.Records.Get(ctx)
-	resp, err := c.Cli.DNS.Records.List(ctx, dns.RecordListParams{
+// dns.RecordListParamsTypeA for A records and dns.RecordListParamsTypeCNAME for tunnel record
+// commented : true if created by turtle CLI. Uses magic comment
+func (c *cloudflareClient) GetDNSRecord(recordType dns.RecordListParamsType, commented bool, ctx context.Context) (*DnsRecord, error) {
+	params := dns.RecordListParams{
 		ZoneID: cloudflare.F(os.Getenv("CLOUDFLARE_ZONE_ID")),
-		// Use comment to identify records created by turtle cli
+		Type:   cloudflare.F(recordType),
+		// contains no comment
 		Comment: cloudflare.F(dns.RecordListParamsComment{
-			Contains: cloudflare.F("Turtle CLI"),
+			Absent: cloudflare.F("comment"),
 		}),
-	})
+	}
+	if commented {
+		// Use comment to identify records created by turtle cli
+		params.Comment = cloudflare.F(dns.RecordListParamsComment{
+			Contains: cloudflare.F(dnsRecordComment),
+		})
+	}
+	resp, err := c.Cli.DNS.Records.List(ctx, params)
 	if err != nil {
 		return nil, err
 	}
@@ -77,6 +88,17 @@ func (c *cloudflareClient) DeleteDNSRecord(d *DnsRecord, ctx context.Context) er
 	_, err := c.Cli.DNS.Records.Delete(ctx, d.Id, dns.RecordDeleteParams{
 		ZoneID: cloudflare.F(os.Getenv("CLOUDFLARE_ZONE_ID")),
 	})
+	return err
+}
+
+func (c *cloudflareClient) CommentDNSRecord(d *DnsRecord, ctx context.Context) error {
+	_, err := c.Cli.DNS.Records.Edit(ctx, d.Id, dns.RecordEditParams{
+		ZoneID: cloudflare.F(os.Getenv("CLOUDFLARE_ZONE_ID")),
+		Body: dns.RecordEditParamsBody{
+			Comment: cloudflare.F(dnsRecordComment),
+		},
+	})
+
 	return err
 }
 
