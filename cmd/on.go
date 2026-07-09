@@ -29,7 +29,7 @@ func activateSelfHosting(imgName string, ctx context.Context) {
 		fmt.Println(err)
 		return
 	}
-	go cloudflare_client.RunCloudflared("example")
+	go cloudflare_client.RunCloudflared(nil)
 }
 
 func checkSelfHosting() bool {
