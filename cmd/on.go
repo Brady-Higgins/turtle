@@ -3,12 +3,19 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
 	"time"
 
 	"github.com/Brady-Higgins/turtle/internal/cloudflare_client"
 	"github.com/Brady-Higgins/turtle/internal/docker"
 	"github.com/spf13/cobra"
 )
+
+type SelfHosting struct {
+	ctx    context.Context
+	cancel context.CancelFunc
+}
 
 func activateSelfHosting(imgName string, ctx context.Context) {
 	d, err := docker.New()
@@ -29,14 +36,15 @@ func activateSelfHosting(imgName string, ctx context.Context) {
 		fmt.Println(err)
 		return
 	}
-	go cloudflare_client.RunCloudflared(nil)
+	cmd := cloudflare_client.CreateCloudflaredCommand(ctx, os.Getenv("CLOUDFLARE_TUNNEL_NAME"))
+	go cloudflare_client.RunCloudflared(cmd)
 }
 
 func checkSelfHosting() bool {
 	return false
 }
 
-func deactivateSelfHosting(imgName string, ctx context.Context) {
+func deactivateSelfHosting(imgName string, cmd *exec.Cmd, cancel context.CancelFunc, ctx context.Context) {
 	d, err := docker.New()
 	id := d.GetContainerID(imgName, ctx)
 	if err != nil {
@@ -49,6 +57,11 @@ func deactivateSelfHosting(imgName string, ctx context.Context) {
 		fmt.Println(err)
 		return
 	}
+	err = cloudflare_client.StopCloudflared(cmd, cancel)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 }
 
 var onCmd = &cobra.Command{
@@ -56,7 +69,7 @@ var onCmd = &cobra.Command{
 	Short: "turn on self hosting",
 	Long:  "turn on self hosting",
 	Run: func(cmd *cobra.Command, args []string) {
-		ctx := context.Background()
+		ctx, cancel := context.WithCancel(context.Background())
 		//imgName := "example-site"
 		imgName, err := cmd.Flags().GetString("image")
 		if imgName == "" {
@@ -72,7 +85,7 @@ var onCmd = &cobra.Command{
 		activateSelfHosting(imgName, ctx)
 		fmt.Printf("Self Hosting Started! Using %s\n", imgName)
 		time.Sleep(time.Second * 10)
-		deactivateSelfHosting(imgName, ctx)
+		deactivateSelfHosting(imgName, nil, cancel, ctx)
 		fmt.Println("Self Hosting Turned Off!")
 	},
 }

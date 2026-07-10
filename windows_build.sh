@@ -1,0 +1,1 @@
+GOOS=windows go build -o /mnt/c/turtle/turtle.exe .
