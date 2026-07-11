@@ -18,20 +18,20 @@ type DnsRecord struct {
 
 const dnsRecordComment string = "Turtle CLI"
 
-type cloudflareClient struct {
+type CloudflareClient struct {
 	Cli *cloudflare.Client
 }
 
 // New : Creates a new docker client
-func New() *cloudflareClient {
+func New() *CloudflareClient {
 	client := cloudflare.NewClient(
 		option.WithAPIToken(os.Getenv("CLOUDFLARE_API_TOKEN")),
 	)
-	c := &cloudflareClient{Cli: client}
+	c := &CloudflareClient{Cli: client}
 	return c
 }
 
-func (c *cloudflareClient) NewDNSRecord(ctx context.Context) error {
+func (c *CloudflareClient) NewDNSRecord(ctx context.Context) error {
 	_, err := c.Cli.DNS.Records.New(ctx, dns.RecordNewParams{
 		ZoneID: cloudflare.F(os.Getenv("CLOUDFLARE_ZONE_ID")),
 		Body: dns.ARecordParam{
@@ -53,7 +53,7 @@ func (c *cloudflareClient) NewDNSRecord(ctx context.Context) error {
 // GetDNSRecord : returns a DNSRecord struct if a turtle created record exists else nil
 // dns.RecordListParamsTypeA for A records and dns.RecordListParamsTypeCNAME for tunnel record
 // commented : true if created by turtle CLI. Uses magic comment
-func (c *cloudflareClient) GetDNSRecord(recordType dns.RecordListParamsType, commented bool, ctx context.Context) (*DnsRecord, error) {
+func (c *CloudflareClient) GetDNSRecord(recordType dns.RecordListParamsType, commented bool, ctx context.Context) (*DnsRecord, error) {
 	params := dns.RecordListParams{
 		ZoneID: cloudflare.F(os.Getenv("CLOUDFLARE_ZONE_ID")),
 		Type:   cloudflare.F(recordType),
@@ -84,14 +84,14 @@ func (c *cloudflareClient) GetDNSRecord(recordType dns.RecordListParamsType, com
 	return &d, nil
 }
 
-func (c *cloudflareClient) DeleteDNSRecord(d *DnsRecord, ctx context.Context) error {
+func (c *CloudflareClient) DeleteDNSRecord(d *DnsRecord, ctx context.Context) error {
 	_, err := c.Cli.DNS.Records.Delete(ctx, d.Id, dns.RecordDeleteParams{
 		ZoneID: cloudflare.F(os.Getenv("CLOUDFLARE_ZONE_ID")),
 	})
 	return err
 }
 
-func (c *cloudflareClient) CommentDNSRecord(d *DnsRecord, ctx context.Context) error {
+func (c *CloudflareClient) CommentDNSRecord(d *DnsRecord, ctx context.Context) error {
 	_, err := c.Cli.DNS.Records.Edit(ctx, d.Id, dns.RecordEditParams{
 		ZoneID: cloudflare.F(os.Getenv("CLOUDFLARE_ZONE_ID")),
 		Body: dns.RecordEditParamsBody{
@@ -102,7 +102,7 @@ func (c *cloudflareClient) CommentDNSRecord(d *DnsRecord, ctx context.Context) e
 	return err
 }
 
-//func (c *cloudflareClient) GetTunnelID(ctx context.Context) (string, error) {
+//func (c *CloudflareClient) GetTunnelID(ctx context.Context) (string, error) {
 //	resp, err := c.Cli.ZeroTrust.Tunnels.List(ctx, zero_trust.TunnelListParams{
 //		AccountID: cloudflare.F(os.Getenv("CLOUDFLARE_ACCOUNT_ID")),
 //		Name:      cloudflare.F(""),
