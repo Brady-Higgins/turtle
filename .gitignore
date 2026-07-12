@@ -36,3 +36,11 @@ planning/
 testing/
 #binary
 turtle
+
+.terraform/
+.terraform.lock.hcl
+main.tf
+terraform.tfstate
+terraform.tfstate.backup
+.idea/
+.idea/turtle.iml
