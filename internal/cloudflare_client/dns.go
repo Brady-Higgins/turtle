@@ -3,7 +3,6 @@ package cloudflare_client
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 
 	"github.com/cloudflare/cloudflare-go/v7"
@@ -31,14 +30,14 @@ func New() *CloudflareClient {
 	return c
 }
 
-func (c *CloudflareClient) NewDNSRecord(ctx context.Context) error {
+func (c *CloudflareClient) NewDNSRecord(ip string, ctx context.Context) error {
 	_, err := c.Cli.DNS.Records.New(ctx, dns.RecordNewParams{
 		ZoneID: cloudflare.F(os.Getenv("CLOUDFLARE_ZONE_ID")),
 		Body: dns.ARecordParam{
 			Name:    cloudflare.F(os.Getenv("WEBSITE_DOMAIN")),
 			TTL:     cloudflare.F(dns.TTL1), // automatic
 			Type:    cloudflare.F(dns.ARecordTypeA),
-			Content: cloudflare.F(os.Getenv("CLOUD_IP")),
+			Content: cloudflare.F(ip),
 			Proxied: cloudflare.F(true),             // proxy it
 			Comment: cloudflare.F(dnsRecordComment), // Use comment to identify records created by turtle cli
 		},
@@ -46,7 +45,6 @@ func (c *CloudflareClient) NewDNSRecord(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("New DNS Record Created Successfully")
 	return nil
 }
 
@@ -101,21 +99,3 @@ func (c *CloudflareClient) CommentDNSRecord(d *DnsRecord, ctx context.Context) e
 
 	return err
 }
-
-//func (c *CloudflareClient) GetTunnelID(ctx context.Context) (string, error) {
-//	resp, err := c.Cli.ZeroTrust.Tunnels.List(ctx, zero_trust.TunnelListParams{
-//		AccountID: cloudflare.F(os.Getenv("CLOUDFLARE_ACCOUNT_ID")),
-//		Name:      cloudflare.F(""),
-//	})
-//	c.Cli.NetworkInterconnects.Interconnects.
-//		fmt.Println(resp)
-//	if err != nil {
-//		return "", err
-//	}
-//	// No tunnels
-//	if len(resp.Result) == 0 {
-//		fmt.Println("nogthing")
-//		return "", nil
-//	}
-//	return resp.Result[0].ID, err
-//}

@@ -2,6 +2,7 @@ package cloud
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"os"
 
@@ -15,7 +16,7 @@ type TfClient struct {
 	tf *tfexec.Terraform
 }
 
-func initTf() *TfClient {
+func InitTf() *TfClient {
 	installer := &releases.ExactVersion{
 		Product: product.Terraform,
 		Version: version.Must(version.NewVersion("1.0.6")),
@@ -40,9 +41,21 @@ func initTf() *TfClient {
 	return &TfClient{tf: tf}
 }
 
-func (t *TfClient) CreateCloudResources() error {
+func (t *TfClient) CreateCloudResources() (string, error) {
 	err := t.tf.Apply(context.Background())
-	return err
+	if err != nil {
+		return "", err
+	}
+	resp, err := t.tf.Output(context.Background())
+	if err != nil {
+		return "", err
+	}
+	var ip string
+	err = json.Unmarshal(resp["public_ip"].Value, &ip)
+	if err != nil {
+		return "", err
+	}
+	return ip, err
 }
 
 func (t *TfClient) DestroyCloudResources() error {

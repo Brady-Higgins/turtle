@@ -1,4 +1,4 @@
-package windows_client
+package service_client
 
 import (
 	"golang.org/x/sys/windows/svc"

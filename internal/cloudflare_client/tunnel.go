@@ -2,7 +2,6 @@ package cloudflare_client
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/exec"
 )
@@ -18,6 +17,11 @@ func RunCloudflared(cmd *exec.Cmd) {
 	return
 }
 
+func StartCloudflared() {
+	// linux or windows
+
+}
+
 func StopCloudflared(cmd *exec.Cmd, cancel context.CancelFunc) error {
 	cancel()
 	err := cmd.Wait()
@@ -30,7 +34,6 @@ func CreateTunnelDNSRecord(tunnelName string, hostName string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("Tunnel DNS Record Created Successfully")
 	return nil
 }
 

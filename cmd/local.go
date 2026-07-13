@@ -4,26 +4,23 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"time"
 
+	"github.com/Brady-Higgins/turtle/internal/cloud"
 	"github.com/Brady-Higgins/turtle/internal/cloudflare_client"
 	"github.com/Brady-Higgins/turtle/internal/docker"
+	"github.com/Brady-Higgins/turtle/internal/service_client"
+	"github.com/cloudflare/cloudflare-go/v7/dns"
 	"github.com/spf13/cobra"
 )
 
-type SelfHosting struct {
-	ctx    context.Context
-	cancel context.CancelFunc
-}
-
-func activateSelfHosting(imgName string, ctx context.Context) {
+func activateLocal(c *cloudflare_client.CloudflareClient, imgName string, tunnelName string, hostName string, ctx context.Context) error {
+	// connect to docker
 	d, err := docker.New()
 	if err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
-	//err = d.StartContainer("example-site:latest", ctx)
+
 	id := d.GetContainerID(imgName, ctx)
 	// container already exists for image
 	if id != "" {
@@ -33,35 +30,58 @@ func activateSelfHosting(imgName string, ctx context.Context) {
 		d.StartContainer(id, ctx)
 	}
 	if err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
-	cmd := cloudflare_client.CreateCloudflaredCommand(ctx, os.Getenv("CLOUDFLARE_TUNNEL_NAME"))
-	go cloudflare_client.RunCloudflared(cmd)
+	fmt.Println("Docker container started")
+	s, err := service_client.New()
+	if err != nil {
+		return err
+	}
+	// start cloudflared service
+	fmt.Println("Cloudflare Tunnel Service started")
+	err = s.StartService()
+	time.Sleep(5 * time.Second)
+	// get old A DNS record
+	record, err := c.GetDNSRecord(dns.RecordListParamsTypeA, true, ctx)
+	if err != nil {
+		return err
+	}
+	// if A record exists
+	if record != nil {
+		// remove old DNS record
+		err = c.DeleteDNSRecord(record, ctx)
+		if err != nil {
+			return err
+		}
+	}
+	// create tunnel DNS record. CNAME
+	err = cloudflare_client.CreateTunnelDNSRecord(tunnelName, hostName)
+	if err == nil {
+		fmt.Println("Tunnel DNS Record Created Successfully")
+	}
+	return err
+
+}
+
+func deactivateCloud(c *cloudflare_client.CloudflareClient, ctx context.Context) error {
+
+	// get new tunnel record
+	tunnelRecord, err := c.GetDNSRecord(dns.RecordListParamsTypeCNAME, false, ctx)
+	// comment it for easy identification later
+	err = c.CommentDNSRecord(tunnelRecord, ctx)
+	if err != nil {
+		return err
+	}
+
+	// destroy cloud resources
+	t := cloud.InitTf()
+	// make this a go routine
+	err = t.DestroyCloudResources()
+	return err
 }
 
 func checkSelfHosting() bool {
 	return false
-}
-
-func deactivateSelfHosting(imgName string, cmd *exec.Cmd, cancel context.CancelFunc, ctx context.Context) {
-	d, err := docker.New()
-	id := d.GetContainerID(imgName, ctx)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	err = d.StopContainer(id, ctx)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	err = cloudflare_client.StopCloudflared(cmd, cancel)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
 }
 
 var localCmd = &cobra.Command{
@@ -69,27 +89,46 @@ var localCmd = &cobra.Command{
 	Short: "switch to local hosting",
 	Long:  "switch to local hosting",
 	Run: func(cmd *cobra.Command, args []string) {
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx := context.Background()
 		//imgName := "example-site"
 		imgName, err := cmd.Flags().GetString("image")
 		if imgName == "" {
 			fmt.Println("Image flag required")
 			return
 		}
+		tunnelName := os.Getenv("CLOUDFLARE_TUNNEL_NAME")
+		if tunnelName == "" {
+			fmt.Println("Cloudflare tunnel name isn't set in your environment")
+			return
+		}
+		hostName := os.Getenv("WEBSITE_DOMAIN")
+		if hostName == "" {
+			fmt.Println("Host name isn't set in your environment")
+			return
+		}
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-		fmt.Println(imgName)
 		fmt.Println("Starting Self Hosting...")
-		activateSelfHosting(imgName, ctx)
-		fmt.Printf("Self Hosting Started! Using %s\n", imgName)
-		time.Sleep(time.Second * 10)
-		deactivateSelfHosting(imgName, nil, cancel, ctx)
-		fmt.Println("Self Hosting Turned Off!")
+		// connect to cloudflare
+		c := cloudflare_client.New()
+		err = activateLocal(c, imgName, tunnelName, hostName, ctx)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		err = deactivateCloud(c, ctx)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Println("Self Hosting Started!")
+		fmt.Printf("Docker Image: %s, Cloudflare Tunnel: %s, Host name: %s\n", imgName, tunnelName, hostName)
+
 	},
 }
 
 func init() {
-	onCmd.Flags().String("image", "", "docker image name to run")
+	localCmd.Flags().String("image", "", "docker image name to run")
 }
