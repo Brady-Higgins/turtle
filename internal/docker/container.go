@@ -76,3 +76,13 @@ func (d *dockerClient) StopContainer(containerID string, ctx context.Context) er
 	}
 	return err
 }
+
+func (d *dockerClient) IsContainerRunning(containerID string, ctx context.Context) bool {
+	containers, _ := d.Cli.ContainerList(ctx, client.ContainerListOptions{All: true})
+	for _, c := range containers.Items {
+		if containerID == c.ID && c.Status == string(container.StateRunning) {
+			return true
+		}
+	}
+	return false
+}
