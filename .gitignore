@@ -43,4 +43,4 @@ main.tf
 terraform.tfstate
 terraform.tfstate.backup
 .idea/
-.idea/turtle.iml
+.terraform.tfstate.lock.info

@@ -22,6 +22,6 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.AddCommand(onCmd)
-	rootCmd.AddCommand(offCmd)
+	rootCmd.AddCommand(localCmd)
+	rootCmd.AddCommand(cloudCmd)
 }

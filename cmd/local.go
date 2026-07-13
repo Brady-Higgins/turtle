@@ -64,10 +64,10 @@ func deactivateSelfHosting(imgName string, cmd *exec.Cmd, cancel context.CancelF
 	}
 }
 
-var onCmd = &cobra.Command{
-	Use:   "on",
-	Short: "turn on self hosting",
-	Long:  "turn on self hosting",
+var localCmd = &cobra.Command{
+	Use:   "local",
+	Short: "switch to local hosting",
+	Long:  "switch to local hosting",
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx, cancel := context.WithCancel(context.Background())
 		//imgName := "example-site"

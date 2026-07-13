@@ -10,12 +10,12 @@ func activateCloud() {
 
 }
 
-var offCmd = &cobra.Command{
-	Use:   "off",
-	Short: "turn off self hosting",
-	Long:  "turn off self hosting",
+var cloudCmd = &cobra.Command{
+	Use:   "cloud",
+	Short: "switch to cloud hosting",
+	Long:  "switch to cloud hosting",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("off command")
+		fmt.Println("cloud command")
 	},
 }
 
