@@ -77,6 +77,7 @@ func deactivateCloud(c *cloudflare_client.CloudflareClient, ctx context.Context)
 	t := cloud.InitTf()
 	// make this a go routine
 	err = t.DestroyCloudResources()
+	fmt.Println("Cloud resources destroyed")
 	return err
 }
 

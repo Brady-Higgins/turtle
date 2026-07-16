@@ -44,3 +44,5 @@ terraform.tfstate
 terraform.tfstate.backup
 .idea/
 .terraform.tfstate.lock.info
+
+config.yml

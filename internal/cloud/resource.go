@@ -37,7 +37,7 @@ func InitTf() *TfClient {
 	if err != nil {
 		log.Fatalf("error running Init: %s", err)
 	}
-
+	// TODO: set state file
 	return &TfClient{tf: tf}
 }
 
