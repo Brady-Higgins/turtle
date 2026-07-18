@@ -13,6 +13,8 @@ type dockerClient struct {
 	Cli *client.Client
 }
 
+// TODO: have something to check if docker is on
+
 // New : Creates a new docker client
 func New() (*dockerClient, error) {
 	cli, err := client.New(client.FromEnv)

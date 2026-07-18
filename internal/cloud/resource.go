@@ -16,6 +16,8 @@ type TfClient struct {
 	tf *tfexec.Terraform
 }
 
+// TODO: add a check if a turtle server instance is already active
+
 func InitTf() *TfClient {
 	installer := &releases.ExactVersion{
 		Product: product.Terraform,

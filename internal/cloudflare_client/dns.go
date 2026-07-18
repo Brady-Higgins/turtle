@@ -3,8 +3,9 @@ package cloudflare_client
 import (
 	"context"
 	"encoding/json"
-	"os"
+	"errors"
 
+	"github.com/Brady-Higgins/turtle/internal/config"
 	"github.com/cloudflare/cloudflare-go/v7"
 	"github.com/cloudflare/cloudflare-go/v7/dns"
 	"github.com/cloudflare/cloudflare-go/v7/option"
@@ -21,20 +22,32 @@ type CloudflareClient struct {
 	Cli *cloudflare.Client
 }
 
-// New : Creates a new docker client
-func New() *CloudflareClient {
+// New : Creates a new cloudflare client
+func New() (*CloudflareClient, error) {
+	apiToken := config.GetConfigValue("cloudflare_api_token")
+	if apiToken == "" {
+		return nil, errors.New("cloudflare API token not set in config or env")
+	}
 	client := cloudflare.NewClient(
-		option.WithAPIToken(os.Getenv("CLOUDFLARE_API_TOKEN")),
+		option.WithAPIToken(apiToken),
 	)
 	c := &CloudflareClient{Cli: client}
-	return c
+	return c, nil
 }
 
 func (c *CloudflareClient) NewDNSRecord(ip string, ctx context.Context) error {
+	zoneID := config.GetConfigValue("cloudflare_zone_id")
+	hostName := config.GetConfigValue("host_name")
+	if zoneID == "" {
+		return errors.New("zone ID not set in config or env")
+	}
+	if hostName == "" {
+		return errors.New("host name not set in config or env")
+	}
 	_, err := c.Cli.DNS.Records.New(ctx, dns.RecordNewParams{
-		ZoneID: cloudflare.F(os.Getenv("CLOUDFLARE_ZONE_ID")),
+		ZoneID: cloudflare.F(zoneID),
 		Body: dns.ARecordParam{
-			Name:    cloudflare.F(os.Getenv("WEBSITE_DOMAIN")),
+			Name:    cloudflare.F(hostName),
 			TTL:     cloudflare.F(dns.TTL1), // automatic
 			Type:    cloudflare.F(dns.ARecordTypeA),
 			Content: cloudflare.F(ip),
@@ -48,12 +61,19 @@ func (c *CloudflareClient) NewDNSRecord(ip string, ctx context.Context) error {
 	return nil
 }
 
+// TODO: if record already exists, dont return error
+
 // GetDNSRecord : returns a DNSRecord struct if a turtle created record exists else nil
 // dns.RecordListParamsTypeA for A records and dns.RecordListParamsTypeCNAME for tunnel record
 // commented : true if created by turtle CLI. Uses magic comment
 func (c *CloudflareClient) GetDNSRecord(recordType dns.RecordListParamsType, commented bool, ctx context.Context) (*DnsRecord, error) {
+	zoneID := config.GetConfigValue("cloudflare_zone_id")
+	if zoneID == "" {
+		return nil, errors.New("zone ID not set in config or env")
+	}
+
 	params := dns.RecordListParams{
-		ZoneID: cloudflare.F(os.Getenv("CLOUDFLARE_ZONE_ID")),
+		ZoneID: cloudflare.F(zoneID),
 		Type:   cloudflare.F(recordType),
 		// contains no comment
 		Comment: cloudflare.F(dns.RecordListParamsComment{
@@ -83,15 +103,23 @@ func (c *CloudflareClient) GetDNSRecord(recordType dns.RecordListParamsType, com
 }
 
 func (c *CloudflareClient) DeleteDNSRecord(d *DnsRecord, ctx context.Context) error {
+	zoneID := config.GetConfigValue("cloudflare_zone_id")
+	if zoneID == "" {
+		return errors.New("zone ID not set in config or env")
+	}
 	_, err := c.Cli.DNS.Records.Delete(ctx, d.Id, dns.RecordDeleteParams{
-		ZoneID: cloudflare.F(os.Getenv("CLOUDFLARE_ZONE_ID")),
+		ZoneID: cloudflare.F(zoneID),
 	})
 	return err
 }
 
 func (c *CloudflareClient) CommentDNSRecord(d *DnsRecord, ctx context.Context) error {
+	zoneID := config.GetConfigValue("cloudflare_zone_id")
+	if zoneID == "" {
+		return errors.New("zone ID not set in config or env")
+	}
 	_, err := c.Cli.DNS.Records.Edit(ctx, d.Id, dns.RecordEditParams{
-		ZoneID: cloudflare.F(os.Getenv("CLOUDFLARE_ZONE_ID")),
+		ZoneID: cloudflare.F(zoneID),
 		Body: dns.RecordEditParamsBody{
 			Comment: cloudflare.F(dnsRecordComment),
 		},

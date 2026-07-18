@@ -11,13 +11,15 @@ import (
 )
 
 type Config struct {
-	CloudflareAPIToken   string `yaml:"cloudflare_api_token"`
-	CloudflareAccountID  string `yaml:"cloudflare_account_id"`
-	CloudflareZoneID     string `yaml:"cloudflare_zone_id"`
-	CloudflareTunnelName string `yaml:"cloudflare_tunnel_name"`
-	HostName             string `yaml:"host_name"`
-	AWSAccessKeyID       string `yaml:"aws_access_key_id"`
-	AWSSecretAccessKey   string `yaml:"aws_secret_access_key"`
+	CloudflareAPIToken    string `yaml:"cloudflare_api_token"`
+	CloudflareAccountID   string `yaml:"cloudflare_account_id"`
+	CloudflareZoneID      string `yaml:"cloudflare_zone_id"`
+	CloudflareTunnelName  string `yaml:"cloudflare_tunnel_name"`
+	HostName              string `yaml:"host_name"`
+	AWSAccessKeyID        string `yaml:"aws_access_key_id"`
+	AWSSecretAccessKey    string `yaml:"aws_secret_access_key"`
+	TerraformFileLocation string `yaml:"terraform_file_location"`
+	StateFileLocation     string `yaml:"state_file_location"`
 }
 
 func SetupConfig() {
@@ -31,11 +33,11 @@ func SetupConfig() {
 		os.Mkdir(turtleConfigDir, 0755)
 	}
 	// Add search paths to find the file
-	viper.AddConfigPath(configDir)
+	viper.AddConfigPath(turtleConfigDir)
 	viper.AddConfigPath(".")
 	// set type
 	viper.SetConfigType("yaml")
-	viper.SetConfigFile(filepath.Join(configDir, "turtle/config.yml"))
+	viper.SetConfigFile(filepath.Join(turtleConfigDir, "config.yml"))
 }
 
 func ConfigExists() (bool, error) {
@@ -74,5 +76,27 @@ func WriteConfig(c *Config) error {
 	if err = viper.WriteConfig(); err != nil {
 		return err
 	}
+	return nil
+}
+
+func GetConfigValue(key string) string {
+	val := viper.Get(key)
+	if val != nil {
+		return val.(string)
+	}
+	return ""
+}
+
+func SetTFEnv() error {
+	awsSecret := GetConfigValue("aws_secret_access_key")
+	awsAccess := GetConfigValue("aws_access_key_id")
+	if awsSecret == "" {
+		return errors.New("AWS Secret Access key not set in config")
+	}
+	if awsAccess == "" {
+		return errors.New("AWS Access key id not set in config")
+	}
+	os.Setenv("AWS_SECRET_ACCESS_KEY", awsSecret)
+	os.Setenv("AWS_ACCESS_KEY_ID", awsAccess)
 	return nil
 }

@@ -2,12 +2,13 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/Brady-Higgins/turtle/internal/cloud"
 	"github.com/Brady-Higgins/turtle/internal/cloudflare_client"
+	"github.com/Brady-Higgins/turtle/internal/config"
 	"github.com/Brady-Higgins/turtle/internal/docker"
 	"github.com/Brady-Higgins/turtle/internal/service_client"
 	"github.com/cloudflare/cloudflare-go/v7/dns"
@@ -43,9 +44,9 @@ func activateLocal(c *cloudflare_client.CloudflareClient, imgName string, tunnel
 	time.Sleep(5 * time.Second)
 	// get old A DNS record
 	record, err := c.GetDNSRecord(dns.RecordListParamsTypeA, true, ctx)
-	if err != nil {
-		return err
-	}
+	//if err != nil {
+	//	return err
+	//}
 	// if A record exists
 	if record != nil {
 		// remove old DNS record
@@ -67,10 +68,12 @@ func deactivateCloud(c *cloudflare_client.CloudflareClient, ctx context.Context)
 
 	// get new tunnel record
 	tunnelRecord, err := c.GetDNSRecord(dns.RecordListParamsTypeCNAME, false, ctx)
-	// comment it for easy identification later
-	err = c.CommentDNSRecord(tunnelRecord, ctx)
-	if err != nil {
-		return err
+	if tunnelRecord != nil {
+		// comment it for easy identification later
+		err = c.CommentDNSRecord(tunnelRecord, ctx)
+		if err != nil {
+			return err
+		}
 	}
 
 	// destroy cloud resources
@@ -78,6 +81,28 @@ func deactivateCloud(c *cloudflare_client.CloudflareClient, ctx context.Context)
 	// make this a go routine
 	err = t.DestroyCloudResources()
 	fmt.Println("Cloud resources destroyed")
+	return err
+}
+
+func setStateLocal() error {
+	instanceType, err := config.FindServerType()
+	if err != nil {
+		return err
+	}
+	hourlyCost := config.ServerToCost(instanceType)
+	if hourlyCost == -1 {
+		return errors.New("server type with unknown cost")
+	}
+	state, _ := config.ReadStateFile()
+	if state == nil {
+		state = &config.State{
+			TotalTime:    "0.0",
+			TotalSavings: "0.0",
+			LastUse:      "",
+		}
+	}
+	config.UpdateStateStart(state)
+	err = config.WriteStateFile(state)
 	return err
 }
 
@@ -91,18 +116,30 @@ var localCmd = &cobra.Command{
 	Long:  "switch to local hosting",
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := context.Background()
+		config.SetupConfig()
+		exists, err := config.ConfigExists()
+		if err != nil || !exists {
+			fmt.Println(err)
+			fmt.Println("Config doesn't exist. Please create it with turtle setup")
+			return
+		}
+		err = config.SetTFEnv()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 		//imgName := "example-site"
 		imgName, err := cmd.Flags().GetString("image")
 		if imgName == "" {
 			fmt.Println("Image flag required")
 			return
 		}
-		tunnelName := os.Getenv("CLOUDFLARE_TUNNEL_NAME")
+		tunnelName := config.GetConfigValue("cloudflare_tunnel_name")
 		if tunnelName == "" {
 			fmt.Println("Cloudflare tunnel name isn't set in your environment")
 			return
 		}
-		hostName := os.Getenv("WEBSITE_DOMAIN")
+		hostName := config.GetConfigValue("host_name")
 		if hostName == "" {
 			fmt.Println("Host name isn't set in your environment")
 			return
@@ -113,13 +150,22 @@ var localCmd = &cobra.Command{
 		}
 		fmt.Println("Starting Self Hosting...")
 		// connect to cloudflare
-		c := cloudflare_client.New()
+		c, err := cloudflare_client.New()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 		err = activateLocal(c, imgName, tunnelName, hostName, ctx)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 		err = deactivateCloud(c, ctx)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		err = setStateLocal()
 		if err != nil {
 			fmt.Println(err)
 			return
